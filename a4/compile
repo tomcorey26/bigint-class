@@ -1,0 +1,80 @@
+#!/bin/bash
+
+clear
+
+echo
+echo
+echo "######################### BigInt Compilation Started. #########################"
+echo
+echo
+
+# Clean up the current repo:
+rm -f ./main.o
+
+set -e
+
+# Variables:
+compiler=g++
+precompiled=./catch/catch-main.o
+ouput=main.o
+FLAGS="-Wall -Wextra -Wfatal-errors -Werror -pedantic"
+
+# Functions:
+usage () {
+    echo "compile"
+    echo "  [-c <compiler>] Specify a different compiler than g++."
+    echo "  [-f] Recompiles catch binaries."
+}
+
+precompile () {
+    padded_print "Precompiling_Catch."
+
+    echo '#define CATCH_CONFIG_MAIN
+    #include "catch.hpp"' > ./catch/catch-main.cpp
+
+    g++ -std=c++11 ./catch/catch-main.cpp -c -o ./catch/catch-main.o
+    rm -f ./catch/catch-main.cpp
+}
+
+padded_print () {
+    line='##############################################################################'
+    printf "%s %s\n\n\n" $1 "${line:${#1}}"
+}
+
+while getopts ":hfc:" opt; do
+    case ${opt} in
+        h )
+            usage
+            exit 0
+        ;;
+        f )
+            padded_print "Removing_precompiled_binaries."
+            rm -f catch/catch-main.o
+        ;;
+        c )
+            compiler=$OPTARG
+        ;;
+        \? )
+            echo "Invalid_usage:"
+            usage
+            exit 1
+        ;;
+    esac
+done
+shift $((OPTIND -1))
+
+# Check for precompilied catch binaries:
+if [ -f "$precompiled" ]; then
+    padded_print "Precompiled_catch_binaries_found."
+else
+    padded_print "Precompiled_catch_binaries_not_found,_precompiling_catch."
+    precompile
+fi
+
+# Compile:
+padded_print "Compiling_Tests."
+$compiler -std=c++11 $FLAGS catch/catch-main.o main.cpp bigint/bigint.cpp -o $ouput
+
+# Run the tests:
+padded_print "Running_Tests."
+./$ouput
